@@ -38,12 +38,12 @@ export function LoginForm({ className, ...props }) {
         if (response.data.user.role === "admin") {
           dispatch(setActiveTeam("ADMIN"));
           dispatch(setAuth(response.data.user));
-          dispatch(
-            setSetting({
-              adrak: "adrak",
-              adrakd: "adraks",
-            })
+          const setting = await get(
+            `/setting?companyId=${response.data.user.companyId}`
           );
+          dispatch(setSetting(setting.data));
+
+          // console.log(setting);
 
           let res = await get(`/our-client/${response.data.user.companyId}`);
           dispatch(setCompany(res.data));

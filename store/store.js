@@ -36,7 +36,7 @@ import settingReducer from "./settingSlice";
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["auth", "user", "company", "team"], // which slices to persist
+  whitelist: ["auth", "user", "company", "team", "setting"], // which slices to persist
 };
 
 const rootReducer = combineReducers({

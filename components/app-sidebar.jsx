@@ -49,6 +49,7 @@ import {
   Ruler,
   Flag,
   CheckCircle2,
+  Calendar,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -216,6 +217,7 @@ const navByTeam = {
     },
     { title: "Task", url: "/admin/task", icon: CheckSquare },
     { title: "Ticket", url: "/admin/ticket", icon: Ticket },
+    { title: "Calendar", url: "/admin/calander", icon: Calendar },
     { title: "User", url: "/hr/user", icon: UserCog },
   ],
 

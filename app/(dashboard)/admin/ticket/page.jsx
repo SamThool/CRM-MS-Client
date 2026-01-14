@@ -73,12 +73,13 @@ export default function TicketsPage() {
 
   const fetchMasters = async () => {
     try {
-      const [clientsRes, productsRes, prioritiesRes, usersRes] = await Promise.all([
-        get("/client"),
-        get(`/product-category?companyId=${companyId}`),
-        get(`/priority?companyId=${companyId}`),
-        get("/users"),
-      ]);
+      const [clientsRes, productsRes, prioritiesRes, usersRes] =
+        await Promise.all([
+          get("/client"),
+          get(`/product-category?companyId=${companyId}`),
+          get(`/priority?companyId=${companyId}`),
+          get("/users"),
+        ]);
 
       setClients(clientsRes?.data || []);
       setProducts(productsRes || []);
@@ -88,7 +89,7 @@ export default function TicketsPage() {
       console.error("Fetch masters failed", err);
     }
   };
-console.log("Priority", priorities);
+  // console.log("Priority", priorities);
   useEffect(() => {
     fetchTickets();
     fetchMasters();
@@ -262,7 +263,9 @@ console.log("Priority", priorities);
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData.dateOfInstallation
-                      ? new Date(formData.dateOfInstallation).toLocaleDateString()
+                      ? new Date(
+                          formData.dateOfInstallation
+                        ).toLocaleDateString()
                       : "Installation Date"}
                   </Button>
                 </PopoverTrigger>
@@ -294,7 +297,9 @@ console.log("Priority", priorities);
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData.serviceExpiryDate
-                      ? new Date(formData.serviceExpiryDate).toLocaleDateString()
+                      ? new Date(
+                          formData.serviceExpiryDate
+                        ).toLocaleDateString()
                       : "Service Expiry Date"}
                   </Button>
                 </PopoverTrigger>
@@ -357,7 +362,7 @@ console.log("Priority", priorities);
                 <SelectContent>
                   {users.map((user) => (
                     <SelectItem key={user._id} value={user._id}>
-                      {user.name || user.firstName + ' ' + user.lastName}
+                      {user.name || user.firstName + " " + user.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>
