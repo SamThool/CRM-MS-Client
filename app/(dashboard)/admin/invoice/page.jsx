@@ -45,7 +45,7 @@ export default function InvoicePage() {
   // Fetch invoices on mount
   useEffect(() => {
     fetchInvoices();
-  }, [companyId]);
+  }, []);
 
   // Callback for when a new invoice is saved
   const handleDialogClose = () => {

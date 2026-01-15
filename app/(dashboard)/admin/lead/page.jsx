@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { get, post } from "@/lib/api";
+import { del, get, post, put } from "@/lib/api";
 import { CalendarIcon, Plus } from "lucide-react";
 
 import {
@@ -36,12 +36,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { se } from "date-fns/locale";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { companyId } = useSelector((state) => state.auth.auth);
+  const setting = useSelector((state) => state.setting.setting);
   const [leadTypes, setLeadTypes] = useState([]);
   const [leadStatuses, setLeadStatuses] = useState([]);
   const [leadSources, setLeadSources] = useState([]);
@@ -95,7 +97,7 @@ export default function ClientsPage() {
     const refferences = await get(`/lead-reference?companyId=${companyId}`);
     const sources = await get(`/lead-source?companyId=${companyId}`);
     const sizes = await get(`/size?companyId=${companyId}`);
-    const sectors = await get(`/size?companyId=${companyId}`);
+    const sectors = await get(`/sector?companyId=${companyId}`);
     setLeadRefferences(refferences);
     setLeadSources(sources);
     setLeadTypes(types);
@@ -117,7 +119,14 @@ export default function ClientsPage() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      await post("/lead", formData);
+      if (formData._id) {
+        // Edit mode
+        await put(`/lead/${formData._id}`, formData); // Or use PUT
+      } else {
+        // Create mode
+        await post("/lead", formData);
+      }
+
       setOpen(false);
       setFormData({
         ClientName: "",
@@ -141,10 +150,54 @@ export default function ClientsPage() {
       });
       fetchClients();
     } catch (err) {
-      console.error("Create client failed", err);
+      console.error("Save client failed", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this client?")) return;
+    try {
+      await del(`/lead/${id}`); // Or DELETE method
+      fetchClients();
+    } catch (err) {
+      console.error("Delete client failed", err);
+    }
+  };
+
+  const handleEdit = (client) => {
+    setFormData({
+      ClientName: client.ClientName,
+      email: client.email,
+      PhoneNumber: client.PhoneNumber,
+      AlternativePhoneNumber: client.AlternativePhoneNumber,
+      AlternativeEmail: client.AlternativeEmail,
+      EmergencyContactPerson: client.EmergencyContactPerson,
+      EmergencyContactNumber: client.EmergencyContactNumber,
+      OfficeAddress: client.OfficeAddress,
+      City: client.City,
+      State: client.State,
+      Country: client.Country,
+      Pincode: client.Pincode,
+      GSTNumber: client.GSTNumber,
+      PanNumber: client.PanNumber,
+      Website: client.Website,
+      startDate: client.startDate,
+      endDate: client.endDate,
+      leadTypeId: client.leadTypeId?._id || "",
+      leadSourceId: client.leadSourceId?._id || "",
+      leadReferenceId: client.leadReferenceId?._id || "",
+      leadStatusId: client.leadStatusId?._id || "",
+      sectorId: client.sectorId?._id || "",
+      sizeId: client.sizeId?._id || "",
+      budget: client.budget || "",
+      revenue: client.revenue || "",
+      renewalDate: client.renewalDate || null,
+      companyId,
+      _id: client._id, // include _id to know it's an edit
+    });
+    setOpen(true);
   };
 
   return (
@@ -152,7 +205,43 @@ export default function ClientsPage() {
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Leads</h2>
-        <Button variant="outline" onClick={() => setOpen(true)}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setFormData({
+              ClientName: "",
+              email: "",
+              PhoneNumber: "",
+              AlternativePhoneNumber: "",
+              AlternativeEmail: "",
+              EmergencyContactPerson: "",
+              EmergencyContactNumber: "",
+              OfficeAddress: "",
+              City: "",
+              State: "",
+              Country: "",
+              Pincode: "",
+              GSTNumber: "",
+              PanNumber: "",
+              Website: "",
+              startDate: "",
+              endDate: "",
+              leadTypeId: "",
+              leadSourceId: "",
+              leadReferenceId: "",
+              leadStatusId: "",
+              sectorId: "",
+              sizeId: "",
+              budget: "",
+              revenue: "",
+
+              renewalDate: null,
+              companyId,
+            });
+
+            setOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Lead
         </Button>
@@ -221,6 +310,22 @@ export default function ClientsPage() {
                     ? new Date(client.createdAt).toLocaleDateString()
                     : "-"}
                 </TableCell>
+                <TableCell className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(client)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(client._id)}
+                  >
+                    Delete
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -246,38 +351,42 @@ export default function ClientsPage() {
                 onChange={handleChange}
                 className="w-full sm:w-[calc(50%-0.5rem)]"
               />
-
-              <Input
-                name="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(50%-0.5rem)]"
-              />
-
-              <Input
-                name="PhoneNumber"
-                placeholder="Phone Number"
-                value={formData.PhoneNumber}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(50%-0.5rem)]"
-              />
-
-              <Input
-                name="AlternativePhoneNumber"
-                placeholder="Alternative Phone"
-                value={formData.AlternativePhoneNumber}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(50%-0.5rem)]"
-              />
-
-              <Input
-                name="AlternativeEmail"
-                placeholder="Alternative Email"
-                value={formData.AlternativeEmail}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(50%-0.5rem)]"
-              />
+              {setting.leadEmail && (
+                <Input
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(50%-0.5rem)]"
+                />
+              )}
+              {setting.leadPhoneNumber && (
+                <Input
+                  name="PhoneNumber"
+                  placeholder="Phone Number"
+                  value={formData.PhoneNumber}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(50%-0.5rem)]"
+                />
+              )}
+              {setting.leadAlternativePhoneContact && (
+                <Input
+                  name="AlternativePhoneNumber"
+                  placeholder="Alternative Phone"
+                  value={formData.AlternativePhoneNumber}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(50%-0.5rem)]"
+                />
+              )}
+              {setting.leadAlternativeEmail && (
+                <Input
+                  name="AlternativeEmail"
+                  placeholder="Alternative Email"
+                  value={formData.AlternativeEmail}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(50%-0.5rem)]"
+                />
+              )}
             </div>
           </FieldGroup>
 
@@ -288,225 +397,243 @@ export default function ClientsPage() {
 
             <div className="flex flex-wrap gap-4">
               {/* Lead Type */}
-              <Select
-                value={formData.leadTypeId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, leadTypeId: value })
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
-                  <SelectValue placeholder="Select Lead Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {leadTypes?.map((type) => (
-                    <SelectItem key={type._id} value={type._id}>
-                      {type.leadType}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {setting.leadLeadType && (
+                <Select
+                  value={formData.leadTypeId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, leadTypeId: value })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
+                    <SelectValue placeholder="Select Lead Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leadTypes?.map((type) => (
+                      <SelectItem key={type._id} value={type._id}>
+                        {type.leadType}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               {/* Lead Source */}
-              <Select
-                value={formData.leadSourceId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, leadSourceId: value })
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
-                  <SelectValue placeholder="Select Lead Source" />
-                </SelectTrigger>
-                <SelectContent>
-                  {leadSources?.map((source) => (
-                    <SelectItem key={source._id} value={source._id}>
-                      {source.leadSource}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
+              {setting.leadLeadSource && (
+                <Select
+                  value={formData.leadSourceId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, leadSourceId: value })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
+                    <SelectValue placeholder="Select Lead Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leadSources?.map((source) => (
+                      <SelectItem key={source._id} value={source._id}>
+                        {source.leadSource}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {/* Lead Reference */}
-              <Select
-                value={formData.leadReferenceId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, leadReferenceId: value })
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
-                  <SelectValue placeholder="Select Lead Reference" />
-                </SelectTrigger>
-                <SelectContent>
-                  {leadRefferences?.map((ref) => (
-                    <SelectItem key={ref._id} value={ref._id}>
-                      {ref.leadReference}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
+              {setting.leadLeadReference && (
+                <Select
+                  value={formData.leadReferenceId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, leadReferenceId: value })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
+                    <SelectValue placeholder="Select Lead Reference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leadRefferences?.map((ref) => (
+                      <SelectItem key={ref._id} value={ref._id}>
+                        {ref.leadReference}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {/* Lead Statuses */}
-              <Select
-                value={formData.leadStatusId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, leadStatusId: value })
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
-                  <SelectValue placeholder="Select Lead Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {leadStatuses?.map((ref) => (
-                    <SelectItem key={ref._id} value={ref._id}>
-                      {ref.leadStatus}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
+              {setting.leadLeadStatus && (
+                <Select
+                  value={formData.leadStatusId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, leadStatusId: value })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
+                    <SelectValue placeholder="Select Lead Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leadStatuses?.map((ref) => (
+                      <SelectItem key={ref._id} value={ref._id}>
+                        {ref.leadStatus}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {/* Client Size */}
-
-              <Select
-                value={formData.sizeId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, sizeId: value })
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
-                  <SelectValue placeholder="Select Size" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sizes?.map((ref) => (
-                    <SelectItem key={ref._id} value={ref._id}>
-                      {ref.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
+              {setting.leadLeadSize && (
+                <Select
+                  value={formData.sizeId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, sizeId: value })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
+                    <SelectValue placeholder="Select Size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sizes?.map((ref) => (
+                      <SelectItem key={ref._id} value={ref._id}>
+                        {ref.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {/* Client Sector */}
-
-              <Select
-                value={formData.sectorId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, sectorId: value })
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
-                  <SelectValue placeholder="Select Sector" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sectors?.map((ref) => (
-                    <SelectItem key={ref._id} value={ref._id}>
-                      {ref.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {setting.leadLeadSector && (
+                <Select
+                  value={formData.sectorId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, sectorId: value })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[calc(33.333%-0.75rem)]">
+                    <SelectValue placeholder="Select Sector" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sectors?.map((ref) => (
+                      <SelectItem key={ref._id} value={ref._id}>
+                        {ref.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               {/* Budget */}
-              <Input
-                type="number"
-                placeholder="Budget"
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-                value={formData.budget || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, budget: e.target.value })
-                }
-              />
-
+              {setting.leadLeadBudget && (
+                <Input
+                  type="number"
+                  placeholder="Budget"
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                  value={formData.budget || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, budget: e.target.value })
+                  }
+                />
+              )}
               {/* Revenue */}
-              <Input
-                type="number"
-                placeholder="Revenue"
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-                value={formData.revenue || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, revenue: e.target.value })
-                }
-              />
-
+              {setting.leadRevenue && (
+                <Input
+                  type="number"
+                  placeholder="Revenue"
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                  value={formData.revenue || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, revenue: e.target.value })
+                  }
+                />
+              )}
+              {}
               {/* Renewal Date */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full sm:w-[calc(33.333%-0.75rem)] justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.renewalDate
-                      ? new Date(formData.renewalDate).toLocaleDateString()
-                      : "Select Renewal Date"}
-                  </Button>
-                </PopoverTrigger>
+              {setting.leadRenewalDate && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-[calc(33.333%-0.75rem)] justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.renewalDate
+                        ? new Date(formData.renewalDate).toLocaleDateString()
+                        : "Select Renewal Date"}
+                    </Button>
+                  </PopoverTrigger>
 
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    captionLayout="dropdown"
-                    selected={
-                      formData.renewalDate
-                        ? new Date(formData.renewalDate)
-                        : undefined
-                    }
-                    onSelect={(date) =>
-                      setFormData({
-                        ...formData,
-                        renewalDate: date?.toISOString(),
-                      })
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      captionLayout="dropdown"
+                      selected={
+                        formData.renewalDate
+                          ? new Date(formData.renewalDate)
+                          : undefined
+                      }
+                      onSelect={(date) =>
+                        setFormData({
+                          ...formData,
+                          renewalDate: date?.toISOString(),
+                        })
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
           </FieldGroup>
 
           <FieldSeparator />
 
           {/* ADDRESS */}
+
           <FieldGroup>
             <FieldTitle>Address</FieldTitle>
 
             <div className="flex flex-wrap gap-4">
-              <Input
-                name="OfficeAddress"
-                placeholder="Office Address"
-                value={formData.OfficeAddress}
-                onChange={handleChange}
-                className="w-full"
-              />
-
-              <Input
-                name="City"
-                placeholder="City"
-                value={formData.City}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-              />
-
-              <Input
-                name="State"
-                placeholder="State"
-                value={formData.State}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-              />
-
-              <Input
-                name="Country"
-                placeholder="Country"
-                value={formData.Country}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-              />
-
-              <Input
-                name="Pincode"
-                placeholder="Pincode"
-                value={formData.Pincode}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-              />
+              {setting.leadOfficeAddress && (
+                <Input
+                  name="OfficeAddress"
+                  placeholder="Office Address"
+                  value={formData.OfficeAddress}
+                  onChange={handleChange}
+                  className="w-full"
+                />
+              )}
+              {setting.leadCity && (
+                <Input
+                  name="City"
+                  placeholder="City"
+                  value={formData.City}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                />
+              )}
+              {setting.leadState && (
+                <Input
+                  name="State"
+                  placeholder="State"
+                  value={formData.State}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                />
+              )}
+              {setting.leadCountry && (
+                <Input
+                  name="Country"
+                  placeholder="Country"
+                  value={formData.Country}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                />
+              )}
+              {setting.leadPincode && (
+                <Input
+                  name="Pincode"
+                  placeholder="Pincode"
+                  value={formData.Pincode}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                />
+              )}
             </div>
           </FieldGroup>
 
@@ -517,29 +644,33 @@ export default function ClientsPage() {
             <FieldTitle>Tax & Business</FieldTitle>
 
             <div className="flex flex-wrap gap-4">
-              <Input
-                name="GSTNumber"
-                placeholder="GST Number"
-                value={formData.GSTNumber}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-              />
-
-              <Input
-                name="PanNumber"
-                placeholder="PAN Number"
-                value={formData.PanNumber}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-              />
-
-              <Input
-                name="Website"
-                placeholder="Website"
-                value={formData.Website}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(33.333%-0.75rem)]"
-              />
+              {setting.leadGSTNumber && (
+                <Input
+                  name="GSTNumber"
+                  placeholder="GST Number"
+                  value={formData.GSTNumber}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                />
+              )}
+              {setting.leadPanNumber && (
+                <Input
+                  name="PanNumber"
+                  placeholder="PAN Number"
+                  value={formData.PanNumber}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                />
+              )}
+              {setting.leadWebsite && (
+                <Input
+                  name="Website"
+                  placeholder="Website"
+                  value={formData.Website}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(33.333%-0.75rem)]"
+                />
+              )}
             </div>
           </FieldGroup>
 
@@ -550,21 +681,24 @@ export default function ClientsPage() {
             <FieldTitle>Emergency Contact</FieldTitle>
 
             <div className="flex flex-wrap gap-4">
-              <Input
-                name="EmergencyContactPerson"
-                placeholder="Emergency Contact Person"
-                value={formData.EmergencyContactPerson}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(50%-0.5rem)]"
-              />
-
-              <Input
-                name="EmergencyContactNumber"
-                placeholder="Emergency Contact Number"
-                value={formData.EmergencyContactNumber}
-                onChange={handleChange}
-                className="w-full sm:w-[calc(50%-0.5rem)]"
-              />
+              {setting.leadEmergencyContactPerson && (
+                <Input
+                  name="EmergencyContactPerson"
+                  placeholder="Emergency Contact Person"
+                  value={formData.EmergencyContactPerson}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(50%-0.5rem)]"
+                />
+              )}
+              {setting.leadEmergencyContactNumber && (
+                <Input
+                  name="EmergencyContactNumber"
+                  placeholder="Emergency Contact Number"
+                  value={formData.EmergencyContactNumber}
+                  onChange={handleChange}
+                  className="w-full sm:w-[calc(50%-0.5rem)]"
+                />
+              )}
             </div>
           </FieldGroup>
 

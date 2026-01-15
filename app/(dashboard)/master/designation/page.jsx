@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -49,11 +48,7 @@ const DesignationPage = () => {
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingDesignation, setEditingDesignation] = useState(null);
-  const [formData, setFormData] = useState({
-    designationName: "",
-    designationCode: "",
-    description: "",
-  });
+  const [designationName, setDesignationName] = useState("");
   const [selected, setSelected] = useState([]); // selected ids
   const [selectAll, setSelectAll] = useState(false);
   const [isBulkEditing, setIsBulkEditing] = useState(false);
@@ -92,27 +87,23 @@ const DesignationPage = () => {
   }, []);
 
   const handleSave = async () => {
-    if (!formData.designationName.trim() || !formData.designationCode.trim()) {
-      toast.error(
-        "Employee Role, Designation Name, and Designation Code are required"
-      );
+    if (!designationName.trim()) {
+      toast.error("Designation name is required");
       return;
     }
 
     setSaving(true);
     try {
       if (editingDesignation) {
-        await put(`/designation/${editingDesignation._id}`, formData);
+        await put(`/designation/${editingDesignation._id}`, {
+          name: designationName,
+        });
         toast.success("Designation updated");
       } else {
-        await post("/designation", formData);
+        await post("/designation", { name: designationName });
         toast.success("Designation added");
       }
-      setFormData({
-        designationName: "",
-        designationCode: "",
-        description: "",
-      });
+      setDesignationName("");
       setEditingDesignation(null);
       setOpenDialog(false);
       await fetchDesignations();
@@ -124,19 +115,15 @@ const DesignationPage = () => {
     }
   };
 
-  const handleEdit = (d) => {
-    setEditingDesignation(d);
-    setFormData({
-      designationName: d.designationName,
-      designationCode: d.designationCode,
-      description: d.description || "",
-    });
+  const handleEdit = (g) => {
+    setEditingDesignation(g);
+    setDesignationName(g.name);
     setOpenDialog(true);
   };
 
   // Delete flows
-  const initiateDelete = (d) => {
-    setDeleteTarget(d);
+  const initiateDelete = (g) => {
+    setDeleteTarget(g);
     setSingleDeleteOpen(true);
   };
 
@@ -208,16 +195,9 @@ const DesignationPage = () => {
       toast.error("No items to save.");
       return;
     }
-    const empty = bulkData.some(
-      (d) =>
-        !d.designationName ||
-        !d.designationCode ||
-        !d.employeeRole.trim() ||
-        !d.designationName.trim() ||
-        !d.designationCode.trim()
-    );
+    const empty = bulkData.some((d) => !d.name || !d.name.trim());
     if (empty) {
-      toast.error("All required fields must be filled before saving.");
+      toast.error("All names must be non-empty before saving.");
       return;
     }
     setBulkSaveCount(bulkData.length);
@@ -232,11 +212,7 @@ const DesignationPage = () => {
     try {
       for (const d of bulkData) {
         // eslint-disable-next-line no-await-in-loop
-        await put(`/designation/${d._id}`, {
-          designationName: d.designationName,
-          designationCode: d.designationCode,
-          description: d.description,
-        });
+        await put(`/designation/${d._id}`, { name: d.name });
       }
       setIsBulkEditing(false);
       await fetchDesignations();
@@ -265,19 +241,6 @@ const DesignationPage = () => {
       return;
     }
 
-    // Validate format: each line should have at least 3 parts separated by commas
-    const invalidLines = lines.filter((line) => {
-      const parts = line.split(",").map((p) => p.trim());
-      return parts.length < 3 || !parts[0] || !parts[1] || !parts[2];
-    });
-
-    if (invalidLines.length > 0) {
-      toast.error(
-        "Each line must have: Employee Role, Designation Name, Designation Code (comma-separated)"
-      );
-      return;
-    }
-
     setBulkAddLinesCache(lines);
     setBulkAddCount(lines.length);
     setBulkAddConfirmOpen(true); // show confirm modal (no spinner yet)
@@ -289,15 +252,9 @@ const DesignationPage = () => {
     setBulkAddConfirmOpen(false); // close confirm dialog
     setBulkAdding(true); // show spinner on big-input dialog's Save All button
     try {
-      for (const line of bulkAddLinesCache) {
-        const parts = line.split(",").map((p) => p.trim());
-        const [designationName, designationCode, description = ""] = parts;
+      for (const name of bulkAddLinesCache) {
         // eslint-disable-next-line no-await-in-loop
-        await post("/designation", {
-          designationName,
-          designationCode,
-          description,
-        });
+        await post("/designation", { name });
       }
       // clear and close big input after successful add
       setBulkAddText("");
@@ -371,20 +328,18 @@ const DesignationPage = () => {
           setBulkAddOpen(open);
         }}
       >
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Bulk Add Designations</DialogTitle>
           </DialogHeader>
 
           <div className="mt-2 space-y-2">
             <p className="text-sm text-muted-foreground">
-              Paste a list of designations below — one per line in format:
-              Employee Role, Designation Name, Designation Code, Description
-              (optional)
+              Paste a list of designation names below — one per line.
             </p>
             <textarea
               className="w-full min-h-[200px] rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder={`Example:\nDoctor, Senior Consultant, SC001, Senior level consultant\nNurse, Staff Nurse, SN001, General nursing staff\nAdmin, Manager, MGR001, Administrative manager`}
+              placeholder={`Example:\nBachelor of Science\nBachelor of Arts\nB.E.`}
               value={bulkAddText}
               onChange={(e) => setBulkAddText(e.target.value)}
               disabled={bulkAdding}
@@ -425,24 +380,21 @@ const DesignationPage = () => {
               />
             </TableHead>
             <TableHead className="w-1/12 text-left">Sr No</TableHead>
-
-            <TableHead className="w-2/12 text-left">Designation Name</TableHead>
-            <TableHead className="w-2/12 text-left">Designation Code</TableHead>
-            <TableHead className="w-2/12 text-left">Description</TableHead>
-            <TableHead className="w-2/12 text-left">Actions</TableHead>
+            <TableHead className="w-7/12 text-left">Name</TableHead>
+            <TableHead className="w-4/12 text-left">Actions</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {loading ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-left">
+              <TableCell colSpan={4} className="text-left">
                 <Loading />
               </TableCell>
             </TableRow>
           ) : designations.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-left">
+              <TableCell colSpan={4} className="text-left">
                 No designations found.
               </TableCell>
             </TableRow>
@@ -468,20 +420,19 @@ const DesignationPage = () => {
                   />
                 </TableCell>
                 <TableCell className="text-left">{index + 1}</TableCell>
-
                 <TableCell className="text-left">
                   {isBulkEditing ? (
                     <Input
                       value={
                         bulkData.find((item) => item._id === designation._id)
-                          ?.designationName || ""
+                          ?.name || ""
                       }
                       onChange={(e) => {
                         const value = e.target.value;
                         setBulkData((prev) =>
                           prev.map((item) =>
                             item._id === designation._id
-                              ? { ...item, designationName: value }
+                              ? { ...item, name: value }
                               : item
                           )
                         );
@@ -489,53 +440,7 @@ const DesignationPage = () => {
                       disabled={bulkSaving || bulkAdding}
                     />
                   ) : (
-                    designation.designationName
-                  )}
-                </TableCell>
-                <TableCell className="text-left">
-                  {isBulkEditing ? (
-                    <Input
-                      value={
-                        bulkData.find((item) => item._id === designation._id)
-                          ?.designationCode || ""
-                      }
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setBulkData((prev) =>
-                          prev.map((item) =>
-                            item._id === designation._id
-                              ? { ...item, designationCode: value }
-                              : item
-                          )
-                        );
-                      }}
-                      disabled={bulkSaving || bulkAdding}
-                    />
-                  ) : (
-                    designation.designationCode
-                  )}
-                </TableCell>
-                <TableCell className="text-left">
-                  {isBulkEditing ? (
-                    <Input
-                      value={
-                        bulkData.find((item) => item._id === designation._id)
-                          ?.description || ""
-                      }
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setBulkData((prev) =>
-                          prev.map((item) =>
-                            item._id === designation._id
-                              ? { ...item, description: value }
-                              : item
-                          )
-                        );
-                      }}
-                      disabled={bulkSaving || bulkAdding}
-                    />
-                  ) : (
-                    designation.description || "-"
+                    designation.name
                   )}
                 </TableCell>
 
@@ -567,54 +472,19 @@ const DesignationPage = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>
               {editingDesignation ? "Edit Designation" : "Add Designation"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 mt-2">
-            <div>
-              <label className="text-sm font-medium">Designation Name *</label>
-              <Input
-                placeholder="Designation Name"
-                value={formData.designationName}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    designationName: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Designation Code *</label>
-              <Input
-                placeholder="Designation Code"
-                value={formData.designationCode}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    designationCode: e.target.value.toUpperCase(),
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                placeholder="Description (optional)"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                rows={3}
-              />
-            </div>
+          <div className="space-y-2 mt-2">
+            <Input
+              placeholder="Designation name"
+              value={designationName}
+              onChange={(e) => setDesignationName(e.target.value)}
+            />
           </div>
 
           <DialogFooter className="mt-4 flex justify-end gap-2">
@@ -648,8 +518,8 @@ const DesignationPage = () => {
             <AlertDialogTitle>Delete Designation</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete{" "}
-              <strong>{deleteTarget?.designationName}</strong>? This action can
-              be undone by restoring on the server only (soft-delete).
+              <strong>{deleteTarget?.name}</strong>? This action can be undone
+              by restoring on the server only (soft-delete).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
