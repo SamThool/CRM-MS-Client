@@ -4,14 +4,6 @@ import { useEffect, useState } from "react";
 import { get, post, put } from "@/lib/api";
 import { CalendarIcon, Plus } from "lucide-react";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -155,7 +147,7 @@ const AddProspect = ({ open, onOpenChange, editData, edit }) => {
         leadStatusId: editData.leadStatusId?._id || null,
       });
     }
-  }, [editData]);
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

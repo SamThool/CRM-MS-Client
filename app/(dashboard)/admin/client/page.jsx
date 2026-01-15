@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { get, post } from "@/lib/api";
-import { CalendarIcon, Plus } from "lucide-react";
+import { get, post, del } from "@/lib/api";
+import { CalendarIcon, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
   Table,
@@ -37,6 +37,13 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { se } from "date-fns/locale";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState([]);
@@ -50,6 +57,8 @@ export default function ClientsPage() {
   const [sizes, setSizes] = useState([]);
   const [sectors, setSectors] = useState([]);
   const [leadRefferences, setLeadRefferences] = useState([]);
+  const [edit, setEdit] = useState(false);
+  const [editData, setEditData] = useState(null);
 
   const [formData, setFormData] = useState({
     ClientName: "",
@@ -69,12 +78,12 @@ export default function ClientsPage() {
     Website: "",
     startDate: "",
     endDate: "",
-    leadTypeId: "",
-    leadSourceId: "",
-    leadReferenceId: "",
-    leadStatusId: "",
-    sectorId: "",
-    sizeId: "",
+    leadTypeId: null,
+    leadSourceId: null,
+    leadReferenceId: null,
+    leadStatusId: null,
+    sectorId: null,
+    sizeId: null,
     budget: "",
     revenue: "",
     renewalDate: null,
@@ -148,6 +157,27 @@ export default function ClientsPage() {
     }
   };
 
+  const handleEdit = (client) => {
+    setFormData({
+      ...client,
+      sizeId: client.sizeId?._id || null,
+      sectorId: client.sectorId?._id || null,
+      leadTypeId: client.leadTypeId?._id || null,
+      leadSourceId: client.leadSourceId?._id || null,
+      leadReferenceId: client.leadReferenceId?._id || null,
+      leadStatusId: client.leadStatusId?._id || null,
+    });
+    setEdit(true);
+    setEditData(client);
+    setOpen(true);
+  };
+
+  const handleDelete = async (clientId) => {
+    await del(`/client/${clientId}`);
+    fetchClients();
+    toast.success("Client deleted successfully");
+  };
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -168,6 +198,7 @@ export default function ClientsPage() {
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>City</TableHead>
+              <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -188,6 +219,69 @@ export default function ClientsPage() {
                 <TableCell>{client.email}</TableCell>
                 <TableCell>{client.PhoneNumber}</TableCell>
                 <TableCell>{client.City || "-"}</TableCell>
+                <TableCell className="space-x-2 text-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleEdit(client)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Edit</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {/* <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleMakeProspect(lead._id)}
+                        >
+                          <UserPlus className="h-4 w-4 text-blue-600" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Make Prospect</p>
+                      </TooltipContent>
+                    </Tooltip> */}
+
+                    {/* <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleMakeClient(lead._id)}
+                        >
+                          <Briefcase className="h-4 w-4 text-green-600" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Make Client</p>
+                      </TooltipContent>
+                    </Tooltip> */}
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDelete(client._id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Delete</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -195,7 +289,12 @@ export default function ClientsPage() {
       </div>
 
       {/* ADD CLIENT DIALOG */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        editData={editData}
+        edit={edit}
+        onOpenChange={setOpen}
+      >
         <DialogContent className="max-w-4xl w-[85vw] h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Client</DialogTitle>
@@ -261,7 +360,7 @@ export default function ClientsPage() {
               {/* Lead Type */}
               {setting.clientLeadType && (
                 <Select
-                  value={formData.leadTypeId}
+                  value={formData.leadTypeId || undefined}
                   onValueChange={(value) =>
                     setFormData({ ...formData, leadTypeId: value })
                   }
@@ -281,7 +380,7 @@ export default function ClientsPage() {
               {/* Lead Source */}
               {setting.clientLeadSource && (
                 <Select
-                  value={formData.leadSourceId}
+                  value={formData.leadSourceId || undefined}
                   onValueChange={(value) =>
                     setFormData({ ...formData, leadSourceId: value })
                   }
@@ -301,7 +400,7 @@ export default function ClientsPage() {
               {/* Lead Reference */}
               {setting.clientLeadReference && (
                 <Select
-                  value={formData.leadReferenceId}
+                  value={formData.leadReferenceId || undefined}
                   onValueChange={(value) =>
                     setFormData({ ...formData, leadReferenceId: value })
                   }
@@ -321,7 +420,7 @@ export default function ClientsPage() {
               {/* Lead Statuses */}
               {setting.clientLeadStatus && (
                 <Select
-                  value={formData.leadStatusId}
+                  value={formData.leadStatusId || undefined}
                   onValueChange={(value) =>
                     setFormData({ ...formData, leadStatusId: value })
                   }
@@ -341,7 +440,7 @@ export default function ClientsPage() {
               {/* Client Size */}
               {setting.clientLeadSize && (
                 <Select
-                  value={formData.sizeId}
+                  value={formData.sizeId || undefined}
                   onValueChange={(value) =>
                     setFormData({ ...formData, sizeId: value })
                   }
@@ -361,7 +460,7 @@ export default function ClientsPage() {
               {/* Client Sector */}
               {setting.clientLeadSector && (
                 <Select
-                  value={formData.sectorId}
+                  value={formData.sectorId || undefined}
                   onValueChange={(value) =>
                     setFormData({ ...formData, sectorId: value })
                   }
