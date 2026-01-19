@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { get, post, del } from "@/lib/api";
 import { CalendarIcon, Pencil, Plus, Trash2 } from "lucide-react";
-
 import {
   Table,
   TableBody,
@@ -219,7 +218,7 @@ export default function ClientsPage() {
                 <TableCell>{client.email}</TableCell>
                 <TableCell>{client.PhoneNumber}</TableCell>
                 <TableCell>{client.City || "-"}</TableCell>
-                <TableCell className="space-x-2 text-center">
+                <TableCell>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
