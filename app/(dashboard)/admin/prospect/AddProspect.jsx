@@ -169,7 +169,7 @@ const AddProspect = ({ open, onOpenChange, editData, edit }) => {
               className="w-full sm:w-[calc(50%-0.5rem)]"
             />
 
-            {setting.prospectEmail && (
+        
               <Input
                 name="email"
                 placeholder="Email"
@@ -177,7 +177,7 @@ const AddProspect = ({ open, onOpenChange, editData, edit }) => {
                 onChange={handleChange}
                 className="w-full sm:w-[calc(50%-0.5rem)]"
               />
-            )}
+      
 
             <Input
               name="PhoneNumber"
